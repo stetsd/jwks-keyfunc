@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"sync"
+
+	"github.com/golang-jwt/jwt/v5"
 )
 
 // JWKS - JSON web key set.
@@ -77,4 +79,46 @@ func NewFromJSONString(jwksString string) (*JWKS, error) {
 	}
 
 	return nil, nil
+}
+
+func (j *JWKS) KeyFunc(token *jwt.Token) (interface{}, error) {
+	kid, ok := token.Header["kid"]
+	if !ok {
+		return nil, ErrReqKid
+	}
+
+	kidRes, ok := kid.(string)
+	if !ok {
+		return nil, ErrKidConvert
+	}
+
+	alg, ok := token.Header["alg"]
+	if !ok {
+		return nil, ErrReqAlg
+	}
+
+	algRes, ok := alg.(string)
+	if !ok {
+		return nil, ErrAlgConvert
+	}
+
+	return j.getPublicKey(kidRes, algRes)
+}
+
+func (j *JWKS) getPublicKey(kid, alg string) (interface{}, error) {
+	j.rwm.RLock()
+
+	pk, ok := j.keys[kid]
+
+	j.rwm.RUnlock()
+
+	if !ok {
+		return nil, ErrPKNotFound
+	}
+
+	if pk.alg != "" && pk.alg != alg {
+		return nil, ErrAlgNotSupported
+	}
+
+	return pk.pk, nil
 }
