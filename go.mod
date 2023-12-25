@@ -1,4 +1,4 @@
-module github.com/stetsd/jwks-keyfunc
+module github.com/stetsd/jwkskeyfunc
 
 go 1.21.5
 
